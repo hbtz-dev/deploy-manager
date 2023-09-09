@@ -1,0 +1,49 @@
+{
+    "name": "deploy-manager",
+    "version": "0.0.1",
+    "description": "mini continuous deployment",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint . --ext .ts --ext .mts",
+        "prettier": "prettier --config .prettierrc --write .",
+        "init": "node dist/init.js",
+        "start": "node dist/index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/hbtz-dev/deploy-manager.git"
+    },
+    "author": "hbtz-dev",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/hbtz-dev/deploy-manager/issues"
+    },
+    "homepage": "https://github.com/hbtz-dev/deploy-manager#readme",
+    "dependencies": {
+        "bcrypt": "^5.1.1",
+        "express": "^4.18.2",
+        "js-beautify": "^1.14.9",
+        "tree-kill": "^1.2.2",
+        "ts-jest": "^29.1.1",
+        "ws": "^8.14.1"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^5.0.0",
+        "@types/express": "^4.17.17",
+        "@types/jest": "^29.5.4",
+        "@types/js-beautify": "^1.14.0",
+        "@types/node": "^20.5.9",
+        "@types/ws": "^8.5.5",
+        "@typescript-eslint/eslint-plugin": "^6.6.0",
+        "@typescript-eslint/parser": "^6.6.0",
+        "eslint": "^8.49.0",
+        "eslint-config-prettier": "^9.0.0",
+        "eslint-plugin-jest": "^27.2.3",
+        "eslint-plugin-prettier": "^5.0.0",
+        "jest": "^29.6.4",
+        "prettier": "^3.0.3",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.2.2"
+    }
+}
