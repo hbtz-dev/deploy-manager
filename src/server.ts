@@ -1,7 +1,10 @@
-import { WebSocketServer, WebSocket } from "ws";
+import * as ws from "ws";
 import { ManageConfig } from "./config";
 import { Manager, ManagerReport } from "./manager";
 import * as bcrypt from "bcrypt";
+
+import https from "https";
+import httpProxy from "http-proxy";
 import { log } from "./log";
 
 type AuthSchema = { type: "auth"; pw: string };
@@ -46,10 +49,12 @@ function tryAuth(s: string, hash: string) {
 
 export class Server {
     static MAX = 10;
-    wss: WebSocketServer;
-    clients: Map<WebSocket, boolean> = new Map();
+    clients: Map<ws.WebSocket, boolean> = new Map();
     managers: Manager[];
     private passHash: string;
+    server: https.Server;
+    proxy: httpProxy;
+    wss: ws.Server;
     sendReport(o: ManagerReport) {
         const s = JSON.stringify(o);
         for (const [ws, auth] of this.clients) {
@@ -64,55 +69,106 @@ export class Server {
         m[o.type]();
         return true;
     }
-    kill() {
-        this.wss.close();
-    }
-    constructor(config: ManageConfig, managers: Manager[], passHash: string) {
-        this.passHash = passHash;
-        this.wss = new WebSocketServer({ port: config.port });
-        this.managers = managers;
-        this.wss.on("connection", (ws) => {
-            if (this.clients.size >= Server.MAX) {
-                ws.terminate();
+    onConnect(ws: ws.WebSocket) {
+        log("client connected");
+        if (this.clients.size >= Server.MAX) {
+            ws.terminate();
+            return;
+        }
+        this.clients.set(ws, false);
+        const destroy = (reason: string = "") => {
+            ws.terminate();
+            this.clients.delete(ws);
+            log(`destroyed connection - ${reason}`);
+        };
+        const doom = setTimeout(() => {
+            this.clients.get(ws) == false && destroy("auth timeout");
+        }, 5000);
+        ws.on("message", async (data) => {
+            const o = decode(data.toString());
+            const authed = this.clients.get(ws);
+            if (!o || (!authed && o.type !== "auth")) {
+                destroy("invalid message/auth");
+            } else if (o.type === "auth") {
+                if (!authed && (await tryAuth(o.pw, this.passHash))) {
+                    this.clients.set(ws, true);
+                    clearTimeout(doom);
+                    ws.send(
+                        JSON.stringify({
+                            items: this.managers.map((m) => m.item.name),
+                            data: this.managers.map((m) => m.generateReport())
+                        })
+                    );
+                    this.clients.set(ws, true);
+                } else {
+                    destroy("bad auth");
+                }
             } else {
-                this.clients.set(ws, false);
-                const destroy = () => {
-                    ws.terminate();
-                    this.clients.delete(ws);
-                };
-                const doom = setTimeout(() => {
-                    this.clients.get(ws) == false && destroy();
-                });
-                ws.on("message", async (data) => {
-                    const o = decode(data.toString());
-                    const authed = this.clients.get(ws);
-                    if (!o || (!authed && o.type !== "auth")) {
-                        destroy();
-                    } else if (o.type === "auth") {
-                        if (!authed && (await tryAuth(o.pw, this.passHash))) {
-                            this.clients.set(ws, true);
-                            clearTimeout(doom);
-                            ws.send(
-                                JSON.stringify({
-                                    items: managers.map((m) => m.item.name),
-                                    data: managers.map((m) =>
-                                        m.generateReport()
-                                    )
-                                })
-                            );
-                            this.clients.set(ws, true);
-                        } else {
-                            destroy();
-                        }
-                    } else {
-                        if (!this.dispatch(o)) {
-                            destroy();
-                        }
-                    }
-                });
-                ws.on("close", destroy);
+                if (!this.dispatch(o)) {
+                    destroy("bad dispatch");
+                }
             }
         });
-        log(`listening on ${config.port}`);
+        ws.on("close", destroy);
+    }
+    constructor(
+        config: ManageConfig,
+        managers: Manager[],
+        certinfo: { cert: string; key: string },
+        passHash: string
+    ) {
+        this.passHash = passHash;
+        this.managers = managers;
+
+        const proxymap = {} as Record<string, number>;
+        if (config.proxy) {
+            for (const man of managers) {
+                const p = man.item.proxy;
+                if (p) {
+                    proxymap[p.fromHost] = p.toPort;
+                }
+            }
+        }
+
+        this.proxy = httpProxy.createProxyServer();
+        this.wss = new ws.Server({ noServer: true });
+        this.server = https.createServer(certinfo, (req, res) => {
+            // Get the subdomain from the host header
+            const host = req.headers.host;
+
+            if (host && host in proxymap) {
+                //log(`https proxy hit ${host}`, "PROXY");
+                const target = `http://localhost:${proxymap[host]}`;
+                this.proxy.web(req, res, { target }, () => {
+                    res.writeHead(503, { "Content-Type": "text/plain" });
+                    res.end();
+                });
+            } else {
+                //log(`https proxy missed ${host}`, "PROXY");
+                res.writeHead(404, { "Content-Type": "text/plain" });
+                res.end();
+            }
+        });
+
+        this.server.on("upgrade", (req, socket, head) => {
+            console.log();
+            const host = req.headers.host;
+            if (host && host in proxymap) {
+                //log(`wss proxy hit ${host}`, "PROXY");
+                const target = `http://localhost:${proxymap[host]}`;
+                this.proxy.ws(req, socket, head, { target }, () => {
+                    socket.destroy();
+                });
+            } else {
+                if (this.clients.size >= Server.MAX) {
+                    socket.destroy();
+                } else {
+                    //log(`wss proxy missed ${host}`, "PROXY");
+                    this.wss.handleUpgrade(req, socket, head, (ws) =>
+                        this.onConnect(ws)
+                    );
+                }
+            }
+        });
     }
 }

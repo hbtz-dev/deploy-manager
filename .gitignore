@@ -1,20 +1,2 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-
+build
 node_modules
-dist
-
-coverage
-
-.vscode
-!.vscode/tasks.js
-.idea
-.npm
-.eslintcache
-.DS_Store
-
-manageconfig.json
-.managepass
-workspace

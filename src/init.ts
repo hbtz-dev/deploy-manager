@@ -5,21 +5,56 @@ import path from "path";
 import { hash } from "bcrypt";
 import js_beautify from "js-beautify";
 
-import { ManageConfig } from "./config";
-import { checkExistsDir } from "./util";
+import { ManageConfig, ManageData } from "./config";
+import { readFileOrWriteDefault } from "./util";
 
 const SAMPLE_DATA = JSON.stringify([
     {
-        name: "sample",
+        name: "sample1",
         repo: "https://github.com/hbtz-dev/demo-server",
         install: "npm install",
         build: "npm run build",
         start: "npm run start",
         env: {
-            PORT: "8000"
+            PORT: "8000",
+            MESSAGE: "Hello 127.0.0.2:8080 from port 8000!"
+        },
+        proxy: {
+            fromHost: "127.0.0.2:8080",
+            toPort: 8000
+        }
+    },
+    {
+        name: "sample2",
+        repo: "https://github.com/hbtz-dev/demo-server",
+        install: "npm install",
+        build: "npm run build",
+        start: "npm run start",
+        env: {
+            PORT: "8001",
+            MESSAGE: "Hello 127.0.0.3:8080 from port 8001!"
+        },
+        proxy: {
+            fromHost: "127.0.0.3:8080",
+            toPort: 8001
+        }
+    },
+    {
+        name: "sample3",
+        repo: "https://github.com/hbtz-dev/demo-server",
+        install: "npm install",
+        build: "npm run build",
+        start: "npm run start",
+        env: {
+            PORT: "8002",
+            MESSAGE: "Hello 127.0.0.4:8080 from port 8002!"
+        },
+        proxy: {
+            fromHost: "127.0.0.4:8080",
+            toPort: 8002
         }
     }
-]);
+] as ManageData);
 
 let SUPPRESS_ECHO = false;
 const rl = readline.createInterface({
@@ -53,10 +88,23 @@ function input(
 }
 
 async function main() {
-    const passHashPath = await input(
-        "password info path: (./.managepass)",
-        "./.managepass"
-    );
+    const cert = {
+        cert: await input(
+            "ssl certificate .pem? (dummy/cert.pem)",
+            "dummy/cert.pem"
+        ),
+        key: await input(
+            "ssl certificate .key? (dummy/cert.key)",
+            "dummy/cert.key"
+        )
+    };
+    let port = NaN;
+    while (Number.isNaN(port)) {
+        port = parseInt(await input("socket port? (8080)", "8080"));
+    }
+    const proxy = (await input("act as reverse proxy? (yes)", "yes"))
+        .toLowerCase()
+        .startsWith("y");
     const workspacePath = await input(
         "workspace path: (./workspace)",
         "./workspace"
@@ -64,17 +112,15 @@ async function main() {
     const autostart = (await input("run everything on start? (yes)", "yes"))
         .toLowerCase()
         .startsWith("y");
-    let port = NaN;
-    while (Number.isNaN(port)) {
-        port = parseInt(await input("socket port? (8080)", "8080"));
-    }
+
     const config: ManageConfig = {
-        passHashPath,
+        cert,
+        port,
+        proxy,
         workspacePath,
-        autostart,
-        port
+        autostart
     };
-    const json = JSON.stringify(config);
+    const json = js_beautify(JSON.stringify(config));
     console.log(json);
     const ok = (await input("is this OK? (yes)", "yes"))
         .toLowerCase()
@@ -84,25 +130,13 @@ async function main() {
         return;
     }
 
-    await fs.writeFile("manageconfig.json", js_beautify(json));
+    await fs.writeFile("manageconfig.json", json);
+    await fs.mkdir(config.workspacePath, { recursive: true });
 
-    if (!(await checkExistsDir(config.workspacePath))) {
-        const ok = (
-            await input(
-                "workspace doesn't exist, create sample data? (yes)",
-                "yes"
-            )
-        )
-            .toLowerCase()
-            .startsWith("y");
-        if (ok) {
-            await fs.mkdir(config.workspacePath);
-            await fs.writeFile(
-                path.join(config.workspacePath, "data.json"),
-                js_beautify(SAMPLE_DATA)
-            );
-        }
-    }
+    await readFileOrWriteDefault(
+        path.join(config.workspacePath, "data.json"),
+        js_beautify(SAMPLE_DATA)
+    );
 
     let pw = "";
     // eslint-disable-next-line no-constant-condition
@@ -120,7 +154,7 @@ async function main() {
         console.log("passwords do not match");
     }
     const pwhash = await hash(pw, 10);
-    await fs.writeFile(passHashPath, pwhash);
+    await fs.writeFile(path.join(workspacePath, ".passhash"), pwhash);
     rl.close();
 }
 main();

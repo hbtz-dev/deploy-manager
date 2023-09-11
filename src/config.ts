@@ -5,13 +5,15 @@ export type ManagedItem = {
     build?: string;
     start: string;
     env?: Record<string, string>;
+    proxy?: { fromHost: string; toPort: number };
 };
 
 export type ManageData = ManagedItem[];
 
 export type ManageConfig = {
-    passHashPath: string;
+    cert: { cert: string; key: string };
     port: number;
+    proxy: boolean;
     workspacePath: string;
     autostart: boolean;
 };

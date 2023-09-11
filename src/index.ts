@@ -5,6 +5,7 @@ import { exec, checkExistsDir, readFileOrWriteDefault } from "./util";
 import { log } from "./log";
 import { Server } from "./server";
 import { Manager } from "./manager";
+import { DUMMY_CERT } from "./dummycert";
 
 export async function prepareProject(
     item: ManagedItem,
@@ -115,29 +116,32 @@ async function startUp() {
     for (const man of managers) {
         man.report = (o) => console.log(o);
     }
+    const cert = await fs.readFile(config.cert.cert, "utf8").catch(() => null);
+    const key = await fs.readFile(config.cert.key, "utf8").catch(() => null);
+
+    const certinfo = cert && key ? { cert, key } : DUMMY_CERT;
+    if (certinfo === DUMMY_CERT) {
+        log(
+            "WARN: SSL certificates not found, using dummy certs. Add the correct certificate paths to manageconfig.json"
+        );
+    }
+    const passHash = await fs.readFile(
+        path.join(config.workspacePath, ".passhash"),
+        "utf8"
+    );
+
+    const serv = new Server(config, managers, certinfo, passHash);
+    const report = serv.sendReport.bind(serv);
+    for (const man of managers) {
+        man.report = report;
+    }
+    serv.server.listen(config.port);
+    log(`listening on ${config.port}`);
     if (config.autostart) {
         for (const man of managers) {
             man.start();
         }
     }
-    const passHash = (
-        await fs.readFile(config.passHashPath).catch(() => null)
-    )?.toString();
-    if (passHash) {
-        const serv = new Server(config, managers, passHash);
-        const report = serv.sendReport.bind(serv);
-        for (const man of managers) {
-            man.report = report;
-        }
-    } else {
-        log("WARNING: password hash not found, server not started");
-    }
-    // process.on("SIGINT", () => {
-    //     serv.kill();
-    // });
-    // process.on("SIGTERM", () => {
-    //     serv.kill();
-    // })
 }
 
 startUp();

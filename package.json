@@ -1,7 +1,7 @@
 {
     "name": "deploy-manager",
     "version": "0.0.1",
-    "description": "mini continuous deployment",
+    "description": "mini continuous deployment and reverse proxy + virtual host",
     "main": "dist/index.js",
     "scripts": {
         "build": "tsc",
@@ -23,6 +23,7 @@
     "dependencies": {
         "bcrypt": "^5.1.1",
         "express": "^4.18.2",
+        "http-proxy": "^1.18.1",
         "js-beautify": "^1.14.9",
         "tree-kill": "^1.2.2",
         "ts-jest": "^29.1.1",
@@ -31,6 +32,7 @@
     "devDependencies": {
         "@types/bcrypt": "^5.0.0",
         "@types/express": "^4.17.17",
+        "@types/http-proxy": "^1.17.11",
         "@types/jest": "^29.5.4",
         "@types/js-beautify": "^1.14.0",
         "@types/node": "^20.5.9",
