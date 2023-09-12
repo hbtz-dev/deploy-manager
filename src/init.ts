@@ -8,53 +8,54 @@ import js_beautify from "js-beautify";
 import { ManageConfig, ManageData } from "./config";
 import { readFileOrWriteDefault } from "./util";
 
-const SAMPLE_DATA = JSON.stringify([
-    {
-        name: "sample1",
-        repo: "https://github.com/hbtz-dev/demo-server",
-        install: "npm install",
-        build: "npm run build",
-        start: "npm run start",
-        env: {
-            PORT: "8000",
-            MESSAGE: "Hello 127.0.0.2:8080 from port 8000!"
+const generateSampleData = (port: number) =>
+    [
+        {
+            name: "admin_panel",
+            repo: "https://github.com/hbtz-dev/deploy-manager-client",
+            install: "npm install",
+            build: "npm run build",
+            start: "npm run start",
+            env: {
+                PORT: "8001",
+                VITE_MANAGER_LOCATION: `localhost:${port}`
+            },
+            proxy: {
+                fromHost: `127.0.0.1:${port}`,
+                toPort: 8001
+            }
         },
-        proxy: {
-            fromHost: "127.0.0.2:8080",
-            toPort: 8000
-        }
-    },
-    {
-        name: "sample2",
-        repo: "https://github.com/hbtz-dev/demo-server",
-        install: "npm install",
-        build: "npm run build",
-        start: "npm run start",
-        env: {
-            PORT: "8001",
-            MESSAGE: "Hello 127.0.0.3:8080 from port 8001!"
+        {
+            name: "sample2",
+            repo: "https://github.com/hbtz-dev/demo-server",
+            install: "npm install",
+            build: "npm run build",
+            start: "npm run start",
+            env: {
+                PORT: "8002",
+                MESSAGE: `Hello 127.0.0.2:${port} from port 8002!`
+            },
+            proxy: {
+                fromHost: `127.0.0.2:${port}`,
+                toPort: 8002
+            }
         },
-        proxy: {
-            fromHost: "127.0.0.3:8080",
-            toPort: 8001
+        {
+            name: "sample3",
+            repo: "https://github.com/hbtz-dev/demo-server",
+            install: "npm install",
+            build: "npm run build",
+            start: "npm run start",
+            env: {
+                PORT: "8003",
+                MESSAGE: `Hello 127.0.0.3:${port} from port 8003!`
+            },
+            proxy: {
+                fromHost: `127.0.0.3:${port}`,
+                toPort: 8003
+            }
         }
-    },
-    {
-        name: "sample3",
-        repo: "https://github.com/hbtz-dev/demo-server",
-        install: "npm install",
-        build: "npm run build",
-        start: "npm run start",
-        env: {
-            PORT: "8002",
-            MESSAGE: "Hello 127.0.0.4:8080 from port 8002!"
-        },
-        proxy: {
-            fromHost: "127.0.0.4:8080",
-            toPort: 8002
-        }
-    }
-] as ManageData);
+    ] as ManageData;
 
 let SUPPRESS_ECHO = false;
 const rl = readline.createInterface({
@@ -135,7 +136,7 @@ async function main() {
 
     await readFileOrWriteDefault(
         path.join(config.workspacePath, "data.json"),
-        js_beautify(SAMPLE_DATA)
+        js_beautify(JSON.stringify(generateSampleData(port)))
     );
 
     let pw = "";

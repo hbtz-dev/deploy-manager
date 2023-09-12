@@ -94,10 +94,9 @@ export class Server {
                     this.clients.set(ws, true);
                     clearTimeout(doom);
                     ws.send(
-                        JSON.stringify({
-                            items: this.managers.map((m) => m.item.name),
-                            data: this.managers.map((m) => m.generateReport())
-                        })
+                        JSON.stringify(
+                            this.managers.map((m) => m.generateReport(true))
+                        )
                     );
                     this.clients.set(ws, true);
                 } else {

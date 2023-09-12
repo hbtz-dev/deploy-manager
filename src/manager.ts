@@ -1,6 +1,6 @@
 import { ManagedItem } from "./config";
 import { exec } from "./util";
-import { prepareProject } from ".";
+import { prepareProject } from "./prepareProject";
 import * as fs from "fs/promises";
 import * as path from "path";
 
@@ -54,12 +54,21 @@ export class Manager {
             }
         }
     }
-    generateReport() {
-        return {
-            name: this.item.name,
-            status: this.status,
-            detail: this.detail
-        };
+    generateReport(includeData = false) {
+        if (includeData) {
+            return {
+                name: this.item.name,
+                status: this.status,
+                detail: this.detail,
+                data: this.item
+            };
+        } else {
+            return {
+                name: this.item.name,
+                status: this.status,
+                detail: this.detail
+            };
+        }
     }
     signalUpdate(newDetail?: string, newCode?: string | number) {
         if (newDetail) {
