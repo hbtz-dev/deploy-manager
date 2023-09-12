@@ -15,9 +15,9 @@ The server exposes a _secure_ websocket endpoint on the active port (default 808
 ## Demo configuration:
 Using `npm run init` with all default values will create a demo configuration that demonstrates the features. To test that everything is working:
 - Run `npm run start` to start the server.
-- - The server will listen and proxy traffic on port 8080 will download and launch three demo HTTP services on port 8000, 8001, and 8002.
-- Navigate to `https://127.0.0.2:8080`. Because the SSL certificate is invalid, your browser will display a warning. Navigate past the warning and you will see your service saying hi through HTTPS from port 8000.
-- Do the same for `https://127.0.0.3:8080` and `https://127.0.0.4:8080`.
+- - The server will listen and proxy traffic on port 8080 will download and launch three demo HTTP services on port 8001, 8002, and 8003.
+- Navigate to `https://127.0.0.1:8080`. Because the SSL certificate is invalid, your browser will display a warning. Navigate past the warning and you will see a basic admin menu served through deploy-manager.
+- Do the same for `https://127.0.0.2:8080` and `https://127.0.0.3:8080` to see demo services being served on port 8002 and 8003 respectively.
 
 ## Customization:
 - Configure your DNS records to direct your domain names to the server IP. 
